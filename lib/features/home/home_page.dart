@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../data/db/database.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../providers.dart';
+import '../settings/settings_page.dart';
 import '../habits/add_habit_sheet.dart';
 import '../habits/habit_card.dart';
 import '../short_tasks/add_short_task_sheet.dart';
@@ -23,17 +24,34 @@ class _HomePageState extends ConsumerState<HomePage> {
   void initState() {
     super.initState();
     // 清理超过 7 天保留期的已完成短期记录(PRD §3.2.2)
-    Future.microtask(() => ref.read(shortTaskRepositoryProvider).removeExpiredCompleted());
+    Future.microtask(() {
+      ref.read(shortTaskRepositoryProvider).removeExpiredCompleted();
+      ref.read(reminderSchedulerProvider).scheduleAll();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final habits = ref.watch(habitRepositoryProvider).watchHabitsDueOn(DateTime.now());
-    final checkedIds = ref.watch(habitRepositoryProvider).watchCheckedHabitIds(HabitRepository.today());
+    final habits = ref
+        .watch(habitRepositoryProvider)
+        .watchHabitsDueOn(DateTime.now());
+    final checkedIds = ref
+        .watch(habitRepositoryProvider)
+        .watchCheckedHabitIds(HabitRepository.today());
     final tasks = ref.watch(shortTaskRepositoryProvider).watchVisibleTasks();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Zhabit')),
+      appBar: AppBar(
+        title: const Text('Zhabit'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: '设置',
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const SettingsPage())),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddChooser(context),
         child: const Icon(Icons.add),
@@ -51,10 +69,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                 stream: checkedIds,
                 builder: (context, checked) {
                   final ids = checked.data ?? const <int>{};
-                  return Column(children: [
-                    for (final h in list)
-                      HabitCard(habit: h, checkedToday: ids.contains(h.id)),
-                  ]);
+                  return Column(
+                    children: [
+                      for (final h in list)
+                        HabitCard(habit: h, checkedToday: ids.contains(h.id)),
+                    ],
+                  );
                 },
               );
             },
@@ -65,10 +85,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             stream: tasks,
             builder: (context, snapshot) {
               final list = snapshot.data ?? const [];
-              if (list.isEmpty) return const _EmptyHint(text: '暂无短期记录,点 + 快速添加');
-              return Column(children: [
-                for (final t in list) ShortTaskCard(task: t),
-              ]);
+              if (list.isEmpty) {
+                return const _EmptyHint(text: '暂无短期记录,点 + 快速添加');
+              }
+              return Column(
+                children: [for (final t in list) ShortTaskCard(task: t)],
+              );
             },
           ),
         ],
