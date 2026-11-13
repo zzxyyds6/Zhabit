@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../db/database.dart';
+import '../db/tables.dart';
 
 /// 长期习惯与打卡的仓储层(PRD §3.1、§6)。
 /// 频率过滤(#3)与 streak 计算(#4)在本层扩展。
@@ -42,6 +43,13 @@ class HabitRepository {
     return true;
   }
 
+  /// 今日已完成打卡的习惯 id 集合(驱动首页打卡按钮状态)。
+  Stream<Set<int>> watchCheckedHabitIds(String date) {
+    final query = _db.select(_db.checkIns)..where((c) => c.date.equals(date));
+    return query.watch().map(
+          (rows) => rows.where((r) => r.status == CheckStatus.done).map((r) => r.habitId).toSet(),
+        );
+  }
   /// 某习惯近 [days] 天的打卡记录(升序)。
   Stream<List<CheckInRow>> watchRecentCheckIns(int habitId, int days) {
     final fromDate = formatDate(DateTime.now().subtract(Duration(days: days)));

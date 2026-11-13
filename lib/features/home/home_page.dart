@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../data/db/database.dart';
+import '../../data/repositories/habit_repository.dart';
 import '../../providers.dart';
+import '../habits/add_habit_sheet.dart';
+import '../habits/habit_card.dart';
 
 /// 首页(PRD §4.1):两个区块——长期习惯 / 短期记录。
 /// #1 为空态骨架;#2、#6 接入各自的添加/打卡交互。
@@ -24,12 +27,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   Widget build(BuildContext context) {
     final habits = ref.watch(habitRepositoryProvider).watchActiveHabits();
+    final checkedIds = ref.watch(habitRepositoryProvider).watchCheckedHabitIds(HabitRepository.today());
     final tasks = ref.watch(shortTaskRepositoryProvider).watchVisibleTasks();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Zhabit')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showPlaceholder(context),
+        onPressed: () => showAddHabitSheet(context),
         child: const Icon(Icons.add),
       ),
       body: ListView(
@@ -41,9 +45,16 @@ class _HomePageState extends ConsumerState<HomePage> {
             builder: (context, snapshot) {
               final list = snapshot.data ?? const [];
               if (list.isEmpty) return const _EmptyHint(text: '还没有长期习惯,点 + 创建');
-              return Column(children: [
-                for (final h in list) Card(child: ListTile(title: Text(h.name))),
-              ]);
+              return StreamBuilder<Set<int>>(
+                stream: checkedIds,
+                builder: (context, checked) {
+                  final ids = checked.data ?? const <int>{};
+                  return Column(children: [
+                    for (final h in list)
+                      HabitCard(habit: h, checkedToday: ids.contains(h.id)),
+                  ]);
+                },
+              );
             },
           ),
           const SizedBox(height: 16),
@@ -63,11 +74,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  void _showPlaceholder(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('添加入口将在 #2(长期习惯)与 #6(短期记录)接入')),
-    );
-  }
+
 }
 
 class _SectionHeader extends StatelessWidget {
