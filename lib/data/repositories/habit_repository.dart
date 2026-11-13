@@ -68,6 +68,12 @@ class HabitRepository {
           (rows) => rows.where((r) => r.status == CheckStatus.done).map((r) => r.habitId).toSet(),
         );
   }
+  /// 某习惯全部已完成打卡的日期键集合(streak 与圆点计算用)。
+  Stream<Set<String>> watchAllCheckInDates(int habitId) {
+    final query = _db.select(_db.checkIns)
+      ..where((c) => c.habitId.equals(habitId) & c.status.equalsValue(CheckStatus.done));
+    return query.watch().map((rows) => rows.map((r) => r.date).toSet());
+  }
   /// 某习惯近 [days] 天的打卡记录(升序)。
   Stream<List<CheckInRow>> watchRecentCheckIns(int habitId, int days) {
     final fromDate = formatDate(DateTime.now().subtract(Duration(days: days)));
