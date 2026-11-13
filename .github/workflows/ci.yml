@@ -89,4 +89,4 @@ jobs:
           script: |
             adb install -r -t build/app/outputs/flutter-apk/app-debug.apk
             adb shell pm grant dev.zzxyyds.zhabit android.permission.POST_NOTIFICATIONS
-            flutter test integration_test/android_smoke_test.dart -d emulator-5554 --no-pub
+            flutter drive -d emulator-5554 --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk --driver=test_driver/integration_test.dart --target=integration_test/android_smoke_test.dart
