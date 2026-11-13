@@ -45,3 +45,41 @@ jobs:
 
       - name: 构建 Web(测试版检查)
         run: flutter build web
+
+  android-emulator-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.50.0
+          cache: true
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - run: flutter pub get
+
+      - name: 生成 drift 代码
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: 构建 Android debug APK
+        run: flutter build apk --debug
+
+      - name: 运行 Android Emulator 冒烟
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: Nexus 6
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            adb install -r -t build/app/outputs/flutter-apk/app-debug.apk
+            adb shell pm grant dev.zzxyyds.zhabit android.permission.POST_NOTIFICATIONS
+            flutter drive -d emulator-5554 --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk --driver=test_driver/integration_test.dart --target=integration_test/android_smoke_test.dart
