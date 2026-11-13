@@ -1,10 +1,13 @@
 import 'package:drift/native.dart';
+import 'package:zhabit/core/reminders/reminder_platform.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zhabit/data/db/database.dart';
+import 'package:zhabit/data/db/tables.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:zhabit/data/repositories/habit_repository.dart';
+import 'package:zhabit/data/repositories/reminder_settings_repository.dart';
 import 'package:zhabit/main.dart';
 import 'package:zhabit/providers.dart';
 
@@ -15,7 +18,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          reminderPlatformProvider.overrideWithValue(
+            const NoopReminderPlatform(),
+          ),
+        ],
         child: const ZhabitApp(),
       ),
     );
@@ -34,7 +42,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          reminderPlatformProvider.overrideWithValue(
+            const NoopReminderPlatform(),
+          ),
+        ],
         child: const ZhabitApp(),
       ),
     );
@@ -68,7 +81,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          reminderPlatformProvider.overrideWithValue(
+            const NoopReminderPlatform(),
+          ),
+        ],
         child: const ZhabitApp(),
       ),
     );
@@ -106,7 +124,12 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          reminderPlatformProvider.overrideWithValue(
+            const NoopReminderPlatform(),
+          ),
+        ],
         child: const ZhabitApp(),
       ),
     );
@@ -116,7 +139,9 @@ void main() {
     await repo.addHabit('睡前阅读');
     final habit = await (db.select(db.habits)).getSingle();
     await (db.update(db.habits)..where((h) => h.id.equals(habit.id))).write(
-      HabitsCompanion(createdAt: Value(DateTime.now().subtract(const Duration(days: 10)))),
+      HabitsCompanion(
+        createdAt: Value(DateTime.now().subtract(const Duration(days: 10))),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -143,6 +168,80 @@ void main() {
     await tester.tap(find.byKey(ValueKey(key)));
     await tester.pumpAndSettle();
     expect(await db.select(db.checkIns).get(), isEmpty);
+
+    await db.close();
+  });
+  testWidgets('MVP 集成:习惯打卡 + 短期记录 + 随机提醒设置', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          reminderPlatformProvider.overrideWithValue(
+            const NoopReminderPlatform(),
+          ),
+        ],
+        child: const ZhabitApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 长期习惯:M1 示例"睡前阅读",并完成今日打卡。
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('长期习惯').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '睡前阅读');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('打卡'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('撤销今日打卡'), findsOneWidget);
+
+    // 短期记录:完成即消失。
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('短期记录').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '买笔记本');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('完成'));
+    await tester.pumpAndSettle();
+    expect(find.text('买笔记本'), findsNothing);
+
+    // 设置页:开启随机间隔,并调整单次提醒上限。
+    await tester.tap(find.byTooltip('设置'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(SwitchListTile));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('随机'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2'));
+    await tester.pumpAndSettle();
+    final settingsRepo = ReminderSettingsRepository(db);
+    final current = await settingsRepo.getSettings();
+    await settingsRepo.save(
+      ReminderGlobalRow(
+        id: current.id,
+        enabled: true,
+        mode: ReminderMode.random,
+        intervalMinutes: current.intervalMinutes,
+        randomMin: 15,
+        randomMax: 60,
+        activeFrom: current.activeFrom,
+        activeUntil: current.activeUntil,
+        maxPerPopup: 2,
+        cooldownMinutes: 30,
+      ),
+    );
+
+    final row = await (db.select(db.reminderGlobal)).getSingle();
+    expect(row.enabled, isTrue);
+    expect(row.mode, ReminderMode.random);
+    expect(row.maxPerPopup, 2);
+    expect(row.cooldownMinutes, 30);
 
     await db.close();
   });
