@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:zhabit/data/db/database.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:drift/drift.dart' show Value;
+import 'package:zhabit/data/repositories/habit_repository.dart';
 import 'package:zhabit/main.dart';
 import 'package:zhabit/providers.dart';
 
@@ -94,6 +96,53 @@ void main() {
     await tester.tap(find.text('撤销'));
     await tester.pumpAndSettle();
     expect(find.text('买笔记本'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('月历补打卡(#5):点过去日期 → 记录写入 → 再点取消', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final repo = HabitRepository(db);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        child: const ZhabitApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 直接入库:创建日设为 10 天前,使"昨天"是合法的补打卡日期
+    await repo.addHabit('睡前阅读');
+    final habit = await (db.select(db.habits)).getSingle();
+    await (db.update(db.habits)..where((h) => h.id.equals(habit.id))).write(
+      HabitsCompanion(createdAt: Value(DateTime.now().subtract(const Duration(days: 10)))),
+    );
+    await tester.pumpAndSettle();
+
+    // 打开详情页(此时页面持有的 habit 已是旧创建日)
+    await tester.tap(find.text('睡前阅读'));
+    await tester.pumpAndSettle();
+
+    // 点昨天(11 月,在本月日历内)补打卡
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final key = 'day-${HabitRepository.formatDate(yesterday)}';
+    await tester.scrollUntilVisible(
+      find.byKey(ValueKey(key)),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(ValueKey(key)));
+    await tester.pumpAndSettle();
+
+    final rows = await db.select(db.checkIns).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.date, HabitRepository.formatDate(yesterday));
+
+    // 再点取消
+    await tester.tap(find.byKey(ValueKey(key)));
+    await tester.pumpAndSettle();
+    expect(await db.select(db.checkIns).get(), isEmpty);
 
     await db.close();
   });

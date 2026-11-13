@@ -5,6 +5,7 @@ import '../../core/habits/streak.dart';
 import '../../data/db/database.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../providers.dart';
+import '../habit_detail/habit_detail_page.dart';
 
 /// 首页习惯卡片:名称 + 频率 + 连续天数 + 7 天圆点 + 一键打卡(#2/#4)。
 class HabitCard extends ConsumerWidget {
@@ -19,6 +20,8 @@ class HabitCard extends ConsumerWidget {
 
     return Card(
       child: ListTile(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => HabitDetailPage(habit: habit))),
         title: Text(habit.name),
         subtitle: StreamBuilder<Set<String>>(
           stream: datesStream,

@@ -110,6 +110,10 @@ class HabitStreakLogic {
     ];
   }
 
+  /// 单日状态(月历用):true=已完成,false=轮到未完成,null=不轮到/未来。
+  static bool? dayStatus(HabitRow habit, Set<String> done, DateTime day) =>
+      _status(habit, done, day);
+
   static bool? _status(HabitRow habit, Set<String> done, DateTime day) {
     final due = habit.frequency == HabitFrequency.daily ||
         habit.frequency == HabitFrequency.weeklyTimes ||
