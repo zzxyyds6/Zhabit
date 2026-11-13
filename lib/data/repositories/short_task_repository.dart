@@ -27,20 +27,26 @@ class ShortTaskRepository {
         ));
   }
 
-  /// 完成:done + completedAt,前端据此变灰并自动隐藏。
+  /// 完成:done + completedAt + hidden(做完即消失,PRD §3.2.2)。
+  /// 7 天保留期过后由 [removeExpiredCompleted] 从数据库清除。
   Future<void> completeTask(int id) {
     return (_db.update(_db.shortTasks)..where((t) => t.id.equals(id))).write(
       ShortTasksCompanion(
         done: const Value(true),
         completedAt: Value(DateTime.now()),
+        hidden: const Value(true),
       ),
     );
   }
 
-  /// 撤销完成(底部提示条的有效期内)。
+  /// 撤销完成(底部提示条的有效期内),条目重新可见。
   Future<void> undoComplete(int id) {
     return (_db.update(_db.shortTasks)..where((t) => t.id.equals(id))).write(
-      ShortTasksCompanion(done: const Value(false), completedAt: const Value(null)),
+      ShortTasksCompanion(
+        done: const Value(false),
+        completedAt: const Value(null),
+        hidden: const Value(false),
+      ),
     );
   }
 

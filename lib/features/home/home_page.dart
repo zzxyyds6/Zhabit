@@ -6,6 +6,8 @@ import '../../data/repositories/habit_repository.dart';
 import '../../providers.dart';
 import '../habits/add_habit_sheet.dart';
 import '../habits/habit_card.dart';
+import '../short_tasks/add_short_task_sheet.dart';
+import '../short_tasks/short_task_card.dart';
 
 /// 首页(PRD §4.1):两个区块——长期习惯 / 短期记录。
 /// #1 为空态骨架;#2、#6 接入各自的添加/打卡交互。
@@ -33,7 +35,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Scaffold(
       appBar: AppBar(title: const Text('Zhabit')),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => showAddHabitSheet(context),
+        onPressed: () => _showAddChooser(context),
         child: const Icon(Icons.add),
       ),
       body: ListView(
@@ -65,7 +67,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               final list = snapshot.data ?? const [];
               if (list.isEmpty) return const _EmptyHint(text: '暂无短期记录,点 + 快速添加');
               return Column(children: [
-                for (final t in list) Card(child: ListTile(title: Text(t.name))),
+                for (final t in list) ShortTaskCard(task: t),
               ]);
             },
           ),
@@ -74,7 +76,36 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-
+  /// 首页 + → 选择添加"长期习惯"或"短期记录"(PRD §4.2)。
+  void _showAddChooser(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.repeat),
+              title: const Text('长期习惯'),
+              onTap: () {
+                Navigator.of(context).pop();
+                showAddHabitSheet(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bolt),
+              title: const Text('短期记录'),
+              onTap: () {
+                Navigator.of(context).pop();
+                showAddShortTaskSheet(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {

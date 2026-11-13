@@ -38,8 +38,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 添加习惯
+    // 添加习惯:FAB → 选择器 → 长期习惯
     await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('长期习惯').last);
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '睡前阅读');
     await tester.tap(find.text('保存'));
@@ -55,6 +57,43 @@ void main() {
     await tester.tap(find.byTooltip('撤销今日打卡'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('打卡'), findsOneWidget);
+
+    await db.close();
+  });
+
+  testWidgets('短期记录:添加 → 完成 → 撤销(#6 闭环)', (tester) async {
+    final db = AppDatabase(NativeDatabase.memory());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appDatabaseProvider.overrideWithValue(db)],
+        child: const ZhabitApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // FAB → 选择器 → 短期记录
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('短期记录').last);
+    await tester.pumpAndSettle();
+
+    // 填写名称并保存
+    await tester.enterText(find.byType(TextField), '买笔记本');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+    expect(find.text('买笔记本'), findsOneWidget);
+
+    // 完成 → 条目消失 + 提示条出现
+    await tester.tap(find.byTooltip('完成'));
+    await tester.pumpAndSettle();
+    expect(find.text('买笔记本'), findsNothing);
+    expect(find.byType(SnackBar), findsOneWidget);
+
+    // 撤销 → 条目重新出现
+    await tester.tap(find.text('撤销'));
+    await tester.pumpAndSettle();
+    expect(find.text('买笔记本'), findsOneWidget);
 
     await db.close();
   });
