@@ -36,5 +36,12 @@ jobs:
       - name: 构建 Android debug APK
         run: flutter build apk --debug
 
+      - name: 上传 Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zhabit-android-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
       - name: 构建 Web(测试版检查)
         run: flutter build web
