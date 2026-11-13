@@ -28,7 +28,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final habits = ref.watch(habitRepositoryProvider).watchActiveHabits();
+    final habits = ref.watch(habitRepositoryProvider).watchHabitsDueOn(DateTime.now());
     final checkedIds = ref.watch(habitRepositoryProvider).watchCheckedHabitIds(HabitRepository.today());
     final tasks = ref.watch(shortTaskRepositoryProvider).watchVisibleTasks();
 

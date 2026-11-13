@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../core/habits/frequency.dart';
 import '../../data/db/database.dart';
 import '../../data/repositories/habit_repository.dart';
 import '../../providers.dart';
@@ -18,6 +19,7 @@ class HabitCard extends ConsumerWidget {
     return Card(
       child: ListTile(
         title: Text(habit.name),
+        subtitle: Text(HabitFrequencyLogic.label(habit)),
         trailing: IconButton.filled(
           isSelected: checkedToday,
           onPressed: () => _toggle(ref),

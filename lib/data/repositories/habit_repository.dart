@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../db/database.dart';
 import '../db/tables.dart';
+import '../../core/habits/frequency.dart';
 
 /// 长期习惯与打卡的仓储层(PRD §3.1、§6)。
 /// 频率过滤(#3)与 streak 计算(#4)在本层扩展。
@@ -18,8 +19,25 @@ class HabitRepository {
     return query.watch();
   }
 
-  Future<int> addHabit(String name) {
-    return _db.into(_db.habits).insert(HabitsCompanion.insert(name: name));
+  Future<int> addHabit(
+    String name, {
+    HabitFrequency frequency = HabitFrequency.daily,
+    int? frequencyValue,
+    String? weekdays,
+  }) {
+    return _db.into(_db.habits).insert(HabitsCompanion.insert(
+          name: name,
+          frequency: Value(frequency),
+          frequencyValue: Value(frequencyValue),
+          weekdays: Value(weekdays),
+        ));
+  }
+
+  /// "今天"列表:未归档 + 按频率过滤当日该做的习惯(#3)。
+  Stream<List<HabitRow>> watchHabitsDueOn(DateTime day) {
+    return watchActiveHabits().map(
+      (habits) => habits.where((h) => HabitFrequencyLogic.isDueOn(h, day)).toList(),
+    );
   }
 
   Future<void> archiveHabit(int id) {
