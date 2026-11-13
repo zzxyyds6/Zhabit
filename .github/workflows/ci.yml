@@ -68,8 +68,8 @@ jobs:
       - name: 生成 drift 代码
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: 构建 Android debug APK
-        run: flutter build apk --debug
+      - name: 构建 Android 冒烟 APK(含集成测试入口)
+        run: flutter build apk --debug --target=integration_test/android_smoke_test.dart
 
       - name: 启用 KVM 权限
         run: |
@@ -87,6 +87,5 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           script: |
-            adb install -r -t build/app/outputs/flutter-apk/app-debug.apk
-            adb shell pm grant dev.zzxyyds.zhabit android.permission.POST_NOTIFICATIONS
+            adb install -g -r -t build/app/outputs/flutter-apk/app-debug.apk
             flutter drive -d emulator-5554 --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk --driver=test_driver/integration_test.dart --target=integration_test/android_smoke_test.dart
